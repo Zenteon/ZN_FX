@@ -7,17 +7,17 @@
 
 uniform float FarPlane <
 	ui_type = "slider";
-	ui_min = 1.1;
-	ui_max = 3000.0;
+	ui_min = 1.0;
+	ui_max = 10000.0;
 	ui_label = "Far Plane";
 	ui_tooltip = "Adjust max depth for depth buffer";
 	ui_category = "Depth Buffer Settings";
-> = 1000.0;
+> = 2000.0;
 
 uniform float NearPlane <
 	ui_type = "slider";
-	ui_min = 1.1;
-	ui_max = 1000.0;
+	ui_min = 0.1;
+	ui_max = 50.0;
 	ui_label = "Near Plane";
 	ui_tooltip = "Adjust min depth for depth buffer";
 	ui_category = "Depth Buffer Settings";
@@ -65,13 +65,7 @@ uniform float distMask <
 	ui_tooltip = "Prevents washing out of clouds, and reduces artifacts from fog";
 	ui_category = "Display";
 > = 0.0;
-/*
-uniform bool useDirectionalLight <
-	ui_label = "Directional Light";
-	ui_tooltip = "More accurate calculation to improve visual quality || Heavy Performance Impact";
-	ui_category = "Sampling";
-> = 1;
-*/
+
 uniform int sLod <
 	ui_type = "slider";
 	ui_min = 0;
@@ -108,7 +102,7 @@ uniform float sampR <
 	ui_label = "Ray Range";
 	ui_tooltip = "Increases GI range without detail loss, may create noise at higher levels || Low Performance impact";
 	ui_category = "Sampling";
-> = 12.0;
+> = 8.0;
 
 uniform bool debug <
 	ui_label = "Debug";
@@ -127,9 +121,9 @@ texture BlueNoiseTex < source = "ZNbluenoise512.png"; >
 };
 texture NorTex{Width = BUFFER_WIDTH / 1; Height = BUFFER_HEIGHT / 1; Format = RGBA8; MipLevels = 1;};
 texture BufTex{Width = BUFFER_WIDTH / 2; Height = BUFFER_HEIGHT / 2; Format = R16; MipLevels = 7;};
-texture LumTex{Width = BUFFER_WIDTH / 2; Height = BUFFER_HEIGHT / 2; Format = RGBA8; MipLevels = 7;};
+texture LumTex{Width = BUFFER_WIDTH / 4; Height = BUFFER_HEIGHT / 4; Format = RGBA8; MipLevels = 6;};
 texture HalfTex{Width = BUFFER_WIDTH / 1.; Height = BUFFER_HEIGHT / 1.; Format = RGBA8; MipLevels = 2;};
-texture NorHalfTex{Width = BUFFER_WIDTH / 4; Height = BUFFER_HEIGHT / 4; Format = RGBA8; MipLevels = 7;};
+
 
 
 
@@ -138,7 +132,7 @@ sampler BufferSam{Texture = BufTex;};
 sampler LightSam{Texture = LumTex;};
 sampler NoiseSam{Texture = BlueNoiseTex;};
 sampler HalfSam{Texture = HalfTex;};
-sampler NorHalfSam{Texture = NorHalfTex;};
+
 
 //============================================================================================
 //Buffer Definitions
@@ -195,13 +189,6 @@ float4 NormalBuffer(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_
 	return float4(0.5 + 0.5 * normalize(float3(vx, vy, vc / FarPlane)), 1.0);
 }
 
-//Saves Normal Buffer LODS
-float4 NormalLods(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_Target
-{
-	float3 normal = tex2D(NormalSam, texcoord).rgb;
-	return float4(normal, 1.0);
-}
-
 //============================================================================================
 //Lighting Calculations
 //============================================================================================
@@ -209,89 +196,66 @@ float4 NormalLods(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_Ta
 float3 sampGI(float2 coord, float3 offset)
 {
     float2 res = float2(BUFFER_WIDTH, BUFFER_HEIGHT);
+    float fn = FarPlane - NearPlane;
 	
 	float2 dir[8]; //Clockwise from verticle
-	dir[0] = normalize(float2(-1, -1) + 1.0 * offset.xy);
-    dir[1] = normalize(float2(-1, 0) + 1.0 * offset.xy);
-    dir[2] = normalize(float2(-1, 1) + 1.0 * offset.xy);
-    dir[3] = normalize(float2(0, -1) + 1.0 * offset.xy);
-    dir[4] = normalize(float2(0, 1) + 1.0 * offset.xy);
-    dir[5] = normalize(float2(1, -1) + 1.0 * offset.xy);
-    dir[6] = normalize(float2(1, 0) + 1.0 * offset.xy);
-    dir[7] = normalize(float2(1, 1) + 1.0 * offset.xy);
+	dir[0] = normalize(float2(-1, -1) + 2.1*offset.xy);
+    dir[1] = normalize(float2(-1, 0) + 2.1*offset.xz);
+    dir[2] = normalize(float2(-1, 1) + 2.1*offset.yx);
+    dir[3] = normalize(float2(0, -1) + 2.1*offset.yz);
+    dir[4] = normalize(float2(0, 1) + 2.1*offset.xy);
+    dir[5] = normalize(float2(1, -1) + 2.1*offset.xz);
+    dir[6] = normalize(float2(1, 0) + 2.1*offset.yx);
+    dir[7] = normalize(float2(1, 1) + 2.1*offset.yz);
     
     float rayS;
     float3 ac;
     float3 map;
  
-    for(rayS = sLod; rayS <= (rayL + sLod); rayS++)
+    for(int i = 0; i < 8; i++)
     {
         
 		float depth = tex2D(BufferSam, coord).r;
 		float trueDepth = ReShade::GetLinearizedDepth(coord);    
 		float3 surfN = normalize(1.0 - 2.0 * tex2D(NormalSam, coord).rgb);
 		float3 normal = surfN;
-		
-	        for(int i = 0; i < 8; i++)
+		float3 rayP = float3(coord, depth);
+	        for(rayS = sLod; rayS <= (rayL + sLod); rayS++)
 	        {
-	            
-				
-				
+	        	float minDep = trueDepth;
 	            for(int ii = 0; ii <= rayT; ii++)
 	            {   
-					float2 moDir = 0.0 * float2(surfN.xy) + float2(dir[i].x, dir[i].y);
+					float2 moDir = float2(dir[i].x, dir[i].y);
 					
-					float3 rayP = float3(coord, depth);
-					rayP += (2.0 * ii + 1.0) * sampR * (offset.r + 1.5) * pow(2.0, rayS) * (normalize(float3(moDir, 0))) / float3(res, 1.0);
-	    			 
-					depth = tex2Dlod(BufferSam, float4(rayP.xy, rayS, rayS)).r;           
+					rayP += (2*ii+1) * sampR * (offset.r + 1.5) * pow(2.0, rayS) * normalize(float3(moDir, 0)) / float3(res, 1.0);
+	    			
+					depth = tex2Dlod(BufferSam, float4(rayP.xy, rayS, rayS)).r;
+					minDep = min(minDep, depth);           
 					map = tex2Dlod(LightSam, float4(rayP.xy, rayS, rayS)).rgb;
-					map *=  1.0 + pow(rayP.z, 2.0) * (FarPlane - NearPlane);
+					map *=  1.0 + pow(rayP.z, 4.0) * fn;
 					
 					
-					
-					
-			
 					
 					
 	                float3 pAc = saturate(map);
-	                //pAc /= 1.0 + pow(1.0 * (FarPlane - NearPlane) * abs(rayP.z - depth), 2.0);
-	                pAc /= 1.0 + distance(float3(rayP.xy *(FarPlane - NearPlane) * rayP.z*rayP.z, rayP.z)
-						, float3(coord*(FarPlane - NearPlane)*depth*depth, depth));
+	                float pd = 1.0 + distance(float3((rayP.xy-0.5) * fn * rayP.z*rayP.z, rayP.z)
+						, float3((coord-0.5)* fn *depth*depth, depth));
+					pAc /= pow(pd, 2.0);
 					
-					/*
-					if(useDirectionalLight == 1)//Weak SS Global Illumination algorith
-					{
-						
-						float3 rayD = float3(coord, trueDepth) - rayP;
-						rayD = normalize(rayD);
-						normal = 1.0 - 2.0 * tex2Dlod(NorHalfSam, float4(rayP.xy, ceil(rayS /rayL), ceil(rayS / rayL))).rgb;
-						
-						float3 directionalDif = 0.5 * (2.0 - distance(dot(surfN, normal), dot(surfN, rayD))); 
-						ac += directionalDif * pAc;
-					}
-					
-					else //Strong ambient occlusion algorithm
-					{
-						float3 rayD = float3(coord, trueDepth) - rayP;
-						rayD = normalize(rayD);
-						
-						float3 ambientDif = 0.5 + 0.5 * dot(surfN, -rayD);
-						ac += ambientDif * pAc;
-					}
-					*/
 					float3 rayD = float3(coord, trueDepth) - rayP;
-						rayD = normalize(rayD);
-						
-						float3 ambientDif = 0.5 + 0.5 * dot(surfN, -rayD);
-						ac += ambientDif * pAc;
+					rayD = normalize(rayD);
 					
+					
+					float3 ambientDif = 0.5 + 0.5 * dot(surfN, -rayD);
+					float comp = ceil(depth - minDep);
+					ac += ambientDif * pAc * comp;
 	            }	             
 	        }
         
     }
-    ac /= 8 * (rayL); //rayD * pow(2.0, rayS - sLod);
+    ac /= 8 * (rayL);
     ac *= rayD;
+   
 	return pow((ac * sqrt(rayL)), 1.0 / 2.2);
 }
 //GI Texture
@@ -299,7 +263,7 @@ float4 GlobalPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_Ta
 {
 	float2 aspectPos= float2(BUFFER_WIDTH, BUFFER_HEIGHT);
 	float3 noise = tex2D(NoiseSam, frac(texcoord * (aspectPos / 512))).rgb;
-	float3 input = sampGI(texcoord, (noise - 0.5));
+	float3 input = sampGI(texcoord, (0.5 - noise));
 	return float4(clamp(input, 0.0, 1.0), 1.0);
 }
 
@@ -356,12 +320,7 @@ technique ZN_SDIL
 		PixelShader = NormalBuffer;
 		RenderTarget = NorTex;
 	}
-	pass
-	{
-		VertexShader = PostProcessVS;
-		PixelShader = NormalLods;
-		RenderTarget = NorHalfTex;
-	}
+	
 	pass
 	{
 		VertexShader = PostProcessVS;
