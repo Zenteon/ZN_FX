@@ -7,6 +7,7 @@ An ever growing list of beautiful lightweight effects to enhance your gaming exp
     
     Zentient SDIL (ZN_GI.fx)
 ![SkyrimSE 2024-03-11 20-09-13](https://github.com/Zenteon/ZN_FX/assets/162768653/a7ab70b6-b4f8-4612-9d0b-51d6c22bc528)
+![SkyrimSE 2024-03-11 22-17-22](https://github.com/Zenteon/ZN_FX/assets/162768653/6dd3beab-288b-4cb9-981c-5f22c392ee30)
 
 SDIL is a lightweight Screen Space Global Illumination shader meant to enhance realism in games with indirect lighting.
 It comes packed with a variety of settings to either significantly boost quality or performance, while providing satisfying results regardless.
