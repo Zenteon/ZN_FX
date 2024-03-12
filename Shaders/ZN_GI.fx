@@ -240,46 +240,19 @@ float3 sampGI(float2 coord, float3 offset)
 	            for(int ii = 0; ii <= rayT; ii++)
 	            {   
 					float2 moDir = 0.0 * float2(surfN.xy) + float2(dir[i].x, dir[i].y);
-					
 					float3 rayP = float3(coord, depth);
 					rayP += (2.0 * ii + 1.0) * sampR * (offset.r + 1.5) * pow(2.0, rayS) * (normalize(float3(moDir, 0))) / float3(res, 1.0);
 	    			 
 					depth = tex2Dlod(BufferSam, float4(rayP.xy, rayS, rayS)).r;           
 					map = tex2Dlod(LightSam, float4(rayP.xy, rayS, rayS)).rgb;
 					map *=  1.0 + pow(rayP.z, 2.0) * (FarPlane - NearPlane);
-					
-					
-					
-					
-			
-					
+								
 					
 	                float3 pAc = saturate(map);
 	                //pAc /= 1.0 + pow(1.0 * (FarPlane - NearPlane) * abs(rayP.z - depth), 2.0);
 	                pAc /= 1.0 + distance(float3(rayP.xy *(FarPlane - NearPlane) * rayP.z*rayP.z, rayP.z)
 						, float3(coord*(FarPlane - NearPlane)*depth*depth, depth));
 					
-					/*
-					if(useDirectionalLight == 1)//Weak SS Global Illumination algorith
-					{
-						
-						float3 rayD = float3(coord, trueDepth) - rayP;
-						rayD = normalize(rayD);
-						normal = 1.0 - 2.0 * tex2Dlod(NorHalfSam, float4(rayP.xy, ceil(rayS /rayL), ceil(rayS / rayL))).rgb;
-						
-						float3 directionalDif = 0.5 * (2.0 - distance(dot(surfN, normal), dot(surfN, rayD))); 
-						ac += directionalDif * pAc;
-					}
-					
-					else //Strong ambient occlusion algorithm
-					{
-						float3 rayD = float3(coord, trueDepth) - rayP;
-						rayD = normalize(rayD);
-						
-						float3 ambientDif = 0.5 + 0.5 * dot(surfN, -rayD);
-						ac += ambientDif * pAc;
-					}
-					*/
 					float3 rayD = float3(coord, trueDepth) - rayP;
 						rayD = normalize(rayD);
 						
