@@ -25,12 +25,21 @@ uniform float NearPlane <
 
 uniform float Intensity <
 	ui_type = "slider";
-	ui_min = 0.0;
+	ui_min = 0.01;
 	ui_max = 1.0;
 	ui_label = "Intensity";
 	ui_tooltip = "Intensity of the effect";
 	ui_category = "Display";
-> = 0.2;
+> = 0.25;
+
+uniform int BlendMode <
+	ui_type = "slider";
+	ui_min = 0;
+	ui_max = 1;
+	ui_label = "Blend Mode";
+	ui_tooltip = "Switch between ambient and additive blending modes";
+	ui_category = "Display";
+> = 0;
 
 uniform float AmbientNeg <
 	ui_type = "slider";
@@ -39,7 +48,7 @@ uniform float AmbientNeg <
 	ui_label = "Ambient light offset";
 	ui_tooltip = "Removes ambient light before applying GI";
 	ui_category = "Display";
-> = 0.06;
+> = 0.1;
 
 uniform float LightEx <
 	ui_type = "slider";
@@ -56,13 +65,13 @@ uniform float distMask <
 	ui_tooltip = "Prevents washing out of clouds, and reduces artifacts from fog";
 	ui_category = "Display";
 > = 0.0;
-
+/*
 uniform bool useDirectionalLight <
 	ui_label = "Directional Light";
 	ui_tooltip = "More accurate calculation to improve visual quality || Heavy Performance Impact";
 	ui_category = "Sampling";
 > = 1;
-
+*/
 uniform int sLod <
 	ui_type = "slider";
 	ui_min = 0;
@@ -79,7 +88,7 @@ uniform int rayT <
 	ui_max = 10;
 	ui_label = "Ray step count";
 	ui_tooltip = "Ray steps per LOD, Increases range without detail loss \n" 
-"Recommended to change incrementally with 'Ray Range' when increasing || Very Heavy Performance impact";
+"Recommended to increase ambient offset when increasing || Very Heavy Performance impact";
 	ui_category = "Sampling";
 > = 0;
 
@@ -90,7 +99,7 @@ uniform float rayD <
 	ui_label = "Brightness multiplier";
 	ui_tooltip = "How bright light sources are. Different from intensity || No Performance impact";
 	ui_category = "Sampling";
-> = 5.0;
+> = 2.0;
 
 uniform float sampR <
 	ui_type = "slider";
@@ -99,7 +108,7 @@ uniform float sampR <
 	ui_label = "Ray Range";
 	ui_tooltip = "Increases GI range without detail loss, may create noise at higher levels || Low Performance impact";
 	ui_category = "Sampling";
-> = 8.0;
+> = 12.0;
 
 uniform bool debug <
 	ui_label = "Debug";
@@ -201,15 +210,15 @@ float3 sampGI(float2 coord, float3 offset)
 {
     float2 res = float2(BUFFER_WIDTH, BUFFER_HEIGHT);
 	
-	float3 dir[8]; //Clockwise from verticle
-	dir[0] = normalize(float3(-1, -1, 0) + 1.0 * offset);
-    dir[1] = normalize(float3(-1, 0, 0) + 1.0 * offset);
-    dir[2] = normalize(float3(-1, 1, 0) + 1.0 * offset);
-    dir[3] = normalize(float3(0, -1, 0) + 1.0 * offset);
-    dir[4] = normalize(float3(0, 1, 0) + 1.0 * offset);
-    dir[5] = normalize(float3(1, -1, 0) + 1.0 * offset);
-    dir[6] = normalize(float3(1, 0, 0) + 1.0 * offset);
-    dir[7] = normalize(float3(1, 1, 0) + 1.0 * offset);
+	float2 dir[8]; //Clockwise from verticle
+	dir[0] = normalize(float2(-1, -1) + 1.0 * offset.xy);
+    dir[1] = normalize(float2(-1, 0) + 1.0 * offset.xy);
+    dir[2] = normalize(float2(-1, 1) + 1.0 * offset.xy);
+    dir[3] = normalize(float2(0, -1) + 1.0 * offset.xy);
+    dir[4] = normalize(float2(0, 1) + 1.0 * offset.xy);
+    dir[5] = normalize(float2(1, -1) + 1.0 * offset.xy);
+    dir[6] = normalize(float2(1, 0) + 1.0 * offset.xy);
+    dir[7] = normalize(float2(1, 1) + 1.0 * offset.xy);
     
     float rayS;
     float3 ac;
@@ -230,13 +239,14 @@ float3 sampGI(float2 coord, float3 offset)
 				
 	            for(int ii = 0; ii <= rayT; ii++)
 	            {   
-					float3 moDir = float3(surfN.xy, 0) + float3(dir[i].x, dir[i].y, 0.0);
+					float2 moDir = 0.0 * float2(surfN.xy) + float2(dir[i].x, dir[i].y);
 					
 					float3 rayP = float3(coord, depth);
-					rayP += (ii + 1.0) * sampR * (offset.r + 1.5) * pow(2.0, rayS) * (normalize(moDir)) / float3(res, 1.0);
+					rayP += (2.0 * ii + 1.0) * sampR * (offset.r + 1.5) * pow(2.0, rayS) * (normalize(float3(moDir, 0))) / float3(res, 1.0);
 	    			 
 					depth = tex2Dlod(BufferSam, float4(rayP.xy, rayS, rayS)).r;           
 					map = tex2Dlod(LightSam, float4(rayP.xy, rayS, rayS)).rgb;
+					map *=  1.0 + pow(rayP.z, 2.0) * (FarPlane - NearPlane);
 					
 					
 					
@@ -245,9 +255,11 @@ float3 sampGI(float2 coord, float3 offset)
 					
 					
 	                float3 pAc = saturate(map);
-	                pAc /= 1.0 + pow(1.0 * (FarPlane - NearPlane) * abs(rayP.z - depth), 2.0);
+	                //pAc /= 1.0 + pow(1.0 * (FarPlane - NearPlane) * abs(rayP.z - depth), 2.0);
+	                pAc /= 1.0 + distance(float3(rayP.xy *(FarPlane - NearPlane) * rayP.z*rayP.z, rayP.z)
+						, float3(coord*(FarPlane - NearPlane)*depth*depth, depth));
 					
-					
+					/*
 					if(useDirectionalLight == 1)//Weak SS Global Illumination algorith
 					{
 						
@@ -255,7 +267,7 @@ float3 sampGI(float2 coord, float3 offset)
 						rayD = normalize(rayD);
 						normal = 1.0 - 2.0 * tex2Dlod(NorHalfSam, float4(rayP.xy, ceil(rayS /rayL), ceil(rayS / rayL))).rgb;
 						
-						float3 directionalDif = 0.5 * (1.0 + dot(surfN, rayD) * dot(surfN, normal));
+						float3 directionalDif = 0.5 * (2.0 - distance(dot(surfN, normal), dot(surfN, rayD))); 
 						ac += directionalDif * pAc;
 					}
 					
@@ -264,18 +276,23 @@ float3 sampGI(float2 coord, float3 offset)
 						float3 rayD = float3(coord, trueDepth) - rayP;
 						rayD = normalize(rayD);
 						
-						float3 ambientDif = 0.5 * (1.0 + dot(surfN, rayD));
+						float3 ambientDif = 0.5 + 0.5 * dot(surfN, -rayD);
 						ac += ambientDif * pAc;
 					}
+					*/
+					float3 rayD = float3(coord, trueDepth) - rayP;
+						rayD = normalize(rayD);
 						
+						float3 ambientDif = 0.5 + 0.5 * dot(surfN, -rayD);
+						ac += ambientDif * pAc;
 					
 	            }	             
 	        }
         
     }
-    ac /= 8 * (rayL + sLod); //rayD * pow(2.0, rayS - sLod);
+    ac /= 8 * (rayL); //rayD * pow(2.0, rayS - sLod);
     ac *= rayD;
-	return pow((ac * sqrt(rayL)) / (rayT + 1.0), 1.0 / 2.2);
+	return pow((ac * sqrt(rayL)), 1.0 / 2.2);
 }
 //GI Texture
 float4 GlobalPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_Target
@@ -299,8 +316,14 @@ float3 ZN_Stylize_FXmain(float4 vpos : SV_Position, float2 texcoord : TexCoord) 
 	
 	float3 GI = tex2Dlod(HalfSam, float4(texcoord, 1, 1)).rgb;
 	GI *= 1.0 - pow(depth, 1.0 - distMask);
-	input = input * abs(debug - 1.0) + Intensity * (clamp(GI - noise * 0.05 - lightG, 0.0, 1.0) - AmbientNeg* abs(debug - 1.0));
-	return input;
+	
+	if(BlendMode == 0){
+		input = input * abs(debug - 1.0) + pow(Intensity, abs(debug - 1.0)) * (clamp(GI - noise * 0.05 - lightG, 0.0, 1.0) - AmbientNeg* abs(debug - 1.0));
+	}
+	else{
+		input = abs(debug - 1.0) * input + pow(Intensity, abs(debug - 1.0)) * GI;
+	}
+	return saturate(input);
 }
 
 technique ZN_SDIL
