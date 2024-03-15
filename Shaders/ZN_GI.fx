@@ -1,3 +1,5 @@
+//Latest shader versions can be found at:https://github.com/Zenteon/ZN_FX
+
 #include "ReShade.fxh"
 
 #ifndef TOTAL_RAY_LODS
@@ -32,7 +34,7 @@ uniform float NearPlane <
 	ui_label = "Near Plane";
 	ui_tooltip = "Adjust min depth for depth buffer, increase slightly if dark lines are visible";
 	ui_category = "Depth Buffer Settings";
-> = 0.1;
+> = 0.7;
 
 
 uniform float Intensity <
@@ -102,14 +104,32 @@ uniform int sLod <
 > = 0;
 
 
-uniform float rayD <
+uniform float LigM <
 	ui_type = "slider";
 	ui_min = 0;
-	ui_max = 30.0;
-	ui_label = "Brightness multiplier";
-	ui_tooltip = "How bright light sources are. Recommended to increase when increasing 'Ray Range'|| No Performance impact";
+	ui_max = 1.0;
+	ui_label = "Brightness power";
+	ui_tooltip = "Exponent of light sources. Recommended to decrease when increasing 'Ray Range'|| No Performance impact";
 	ui_category = "Sampling";
-> = 9.0;
+> = 1.0;
+
+uniform float disD <
+	ui_type = "slider";
+	ui_min = 0;
+	ui_max = 2.0;
+	ui_label = "Distance Power";
+	ui_tooltip = "Modifies the laws of physics, 2 is physically accurate || No Performance impact";
+	ui_category = "Sampling";
+> = 2.0;
+
+uniform float disM <
+	ui_type = "slider";
+	ui_min = 0;
+	ui_max = 1.0;
+	ui_label = "Distance Scale";
+	ui_tooltip = "Scale of the world distance calculations are made";
+	ui_category = "Sampling";
+> = 0.25;
 
 uniform float sampR <
 	ui_type = "slider";
@@ -261,11 +281,12 @@ float3 sampGI(float2 coord, float3 offset, float2 pw)
 					minDep = min(minDep, depth);           
 					
 					map = tex2Dlod(LightSam, float4(rayP.xy, ll, ll)).rgb;
-					map *= 1.0 + pow(distance(eyePos(rayP.xy, rayP.z, pw), 0.0), 2.0) / fn;
+					map = -map / (map - 1.1);
+					map *= 1.0 + pow(distance(eyePos(rayP.xy, rayP.z, pw), 0.0), disD) / fn;
 					
 					
-	                float pd = 1.0 + distance(eyePos(rayP.xy, rayP.z, pw), eyePos(coord, depth, pw));
-					map /= pow(pd, 2.0);
+	                float pd = 1.0 + disM * distance(eyePos(rayP.xy, rayP.z, pw), eyePos(coord, depth, pw));
+					map /= pow(pd, disD);
 					
 					float3 rayD = float3(coord, trueDepth) - rayP;
 					rayD = normalize(rayD);
@@ -280,7 +301,7 @@ float3 sampGI(float2 coord, float3 offset, float2 pw)
         
     }
     ac /= 8 * TOTAL_RAY_LODS;
-    ac *= rayD;
+    ac =pow(ac,  LigM);
    
 	return pow((ac * sqrt(TOTAL_RAY_LODS)), 1.0 / 2.2);
 }
@@ -312,8 +333,7 @@ float3 Denoise(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_Targe
             float2 c = ((texcoord * res)-3.0 + float2(i, ii)) / res;
             float d = ReShade::GetLinearizedDepth(c);
             float3 sam = g * tex2D(HalfSam, c).rgb;
-            
-            sam /= 1.0 + pow(distance(eyePos(c, d, FarPlane), eyePos(texcoord, gd, FarPlane)), 2.0) / fn;
+            sam /= 1.0 + disM * pow(distance(eyePos(c, d, FarPlane), eyePos(texcoord, gd, FarPlane)), disD) / fn;
   		  col += sam;      
 		}
     }
