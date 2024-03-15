@@ -85,6 +85,12 @@ uniform bool addR <
 	ui_category = "Sampling";
 > = 0;
 
+uniform bool doDenoising <
+	ui_label = "Denoising";
+	ui_tooltip = "Runs a gaussian denoising pass || Moderate Performance impact"; 
+	ui_category = "Sampling";
+> = 1;
+
 uniform int sLod <
 	ui_type = "slider";
 	ui_min = 0;
@@ -99,11 +105,11 @@ uniform int sLod <
 uniform float rayD <
 	ui_type = "slider";
 	ui_min = 0;
-	ui_max = 10.0;
+	ui_max = 30.0;
 	ui_label = "Brightness multiplier";
-	ui_tooltip = "How bright light sources are. Different from intensity || No Performance impact";
+	ui_tooltip = "How bright light sources are. Recommended to increase when increasing 'Ray Range'|| No Performance impact";
 	ui_category = "Sampling";
-> = 4.0;
+> = 9.0;
 
 uniform float sampR <
 	ui_type = "slider";
@@ -123,26 +129,26 @@ uniform bool debug <
 //============================================================================================
 //Textures and samplers
 //============================================================================================
-texture BlueNoiseTex < source = "ZNbluenoise512.png"; >
+texture GIBlueNoiseTex < source = "ZNbluenoise512.png"; >
 {
 	Width  = 512.0;
 	Height = 512.0;
 	Format = RGBA8;
 };
-texture NorTex{Width = BUFFER_WIDTH / 1; Height = BUFFER_HEIGHT / 1; Format = RGBA8; MipLevels = 1;};
-texture BufTex{Width = BUFFER_WIDTH / 2; Height = BUFFER_HEIGHT / 2; Format = R16; MipLevels = 7;};
-texture LumTex{Width = BUFFER_WIDTH / 4; Height = BUFFER_HEIGHT / 4; Format = RGBA8; MipLevels = 6;};
-texture HalfTex{Width = BUFFER_WIDTH / 1.; Height = BUFFER_HEIGHT / 1.; Format = RGBA8; MipLevels = 2;};
+texture GINorTex{Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA8; MipLevels = 1;};
+texture GIBufTex{Width = BUFFER_WIDTH / 2; Height = BUFFER_HEIGHT / 2; Format = R16; MipLevels = 7;};
+texture GILumTex{Width = BUFFER_WIDTH / 4; Height = BUFFER_HEIGHT / 4; Format = RGBA8; MipLevels = 6;};
+texture GIHalfTex{Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA8; MipLevels = 2;};
+texture GIBlurTex1{Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA8; MipLevels = 2;};
 
 
 
-
-sampler NormalSam{Texture = NorTex;};
-sampler BufferSam{Texture = BufTex;};
-sampler LightSam{Texture = LumTex;};
-sampler NoiseSam{Texture = BlueNoiseTex;};
-sampler HalfSam{Texture = HalfTex;};
-
+sampler NormalSam{Texture = GINorTex;};
+sampler BufferSam{Texture = GIBufTex;};
+sampler LightSam{Texture = GILumTex;};
+sampler NoiseSam{Texture = GIBlueNoiseTex;};
+sampler HalfSam{Texture = GIHalfTex;};
+sampler BlurSam1{Texture = GIBlurTex1;};
 
 //============================================================================================
 //Buffer Definitions
@@ -278,6 +284,43 @@ float3 sampGI(float2 coord, float3 offset, float2 pw)
    
 	return pow((ac * sqrt(TOTAL_RAY_LODS)), 1.0 / 2.2);
 }
+
+//============================================================================================
+//Denoising
+//============================================================================================
+
+float3 Denoise(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_Target
+{
+	if(doDenoising == 0) {return tex2D(HalfSam, texcoord).rgb;}    
+	int gaussianK[25] =
+	{1,4,7,4,1,
+    4,16,26,16,4,
+    7,26,41,26,7,
+    4,16,26,16,4,
+    1,4,7,4,1};
+    
+    float fn = FarPlane - NearPlane;
+    float2 res = float2(BUFFER_WIDTH, BUFFER_HEIGHT);
+    float3 col;
+    float gd = ReShade::GetLinearizedDepth(texcoord);
+    for(int i = 0; i < 5; i++)
+    {
+        for(int ii = 0; ii < 5; ii++)
+        {
+            int s = (i) + (ii);
+            float g = float(gaussianK[s]);
+            float2 c = ((texcoord * res)-3.0 + float2(i, ii)) / res;
+            float d = ReShade::GetLinearizedDepth(c);
+            float3 sam = g * tex2D(HalfSam, c).rgb;
+            
+            sam /= 1.0 + pow(distance(eyePos(c, d, FarPlane), eyePos(texcoord, gd, FarPlane)), 2.0) / fn;
+  		  col += sam;      
+		}
+    }
+    return 1.5 * col / 273.0;
+}
+
+
 //GI Texture
 float4 GlobalPass(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_Target
 {
@@ -301,7 +344,7 @@ float3 ZN_Stylize_FXmain(float4 vpos : SV_Position, float2 texcoord : TexCoord) 
 	
 	float lightG = light.r * 0.2126 + light.g * 0.7152 + light.b * 0.0722;
 	
-	float3 GI = tex2Dlod(HalfSam, float4(texcoord, 1,1)).rgb;
+	float3 GI = tex2Dlod(BlurSam1, float4(texcoord, 1,1)).rgb;
 	GI *= 1.0 - pow(depth, 1.0 - distMask);
 	
 	if(BlendMode == 0){
@@ -333,26 +376,32 @@ technique ZN_SDIL
 	{
 		VertexShader = PostProcessVS;
 		PixelShader = LightMap;
-		RenderTarget = LumTex;
+		RenderTarget = GILumTex;
 	}
 	pass
 	{
 		VertexShader = PostProcessVS;
 		PixelShader = LinearBuffer;
-		RenderTarget = BufTex;
+		RenderTarget = GIBufTex;
 	}
 	pass
 	{
 		VertexShader = PostProcessVS;
 		PixelShader = NormalBuffer;
-		RenderTarget = NorTex;
+		RenderTarget = GINorTex;
 	}
 	
 	pass
 	{
 		VertexShader = PostProcessVS;
 		PixelShader = GlobalPass;
-		RenderTarget = HalfTex;
+		RenderTarget = GIHalfTex;
+	}
+	pass
+	{
+		VertexShader = PostProcessVS;
+		PixelShader = Denoise;
+		RenderTarget = GIBlurTex1;
 	}
 	pass
 	{
