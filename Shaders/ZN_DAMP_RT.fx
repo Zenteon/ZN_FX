@@ -148,9 +148,9 @@ uniform bool REMOVE_DIRECTL <
 uniform bool BLOCK_SCATTER <
 	ui_label = "Block Scattering";
 	//hidden = true;
-	ui_tooltip = "Takes into account extra information about sampled surfaces || Large Performance Impact";
+	ui_tooltip = "Takes into account extra information about sampled surfaces || Low-Medium Performance Impact";
 	ui_category = "Sampling";
-> = 0;
+> = 1;
 
 uniform float RAY_LENGTH <
 ui_type = "slider";
@@ -326,15 +326,16 @@ float3 DAMPGI(float2 xy, float2 offset)
     		
     		//Max shadow vector calculation
     		//if((minD - float3(xy, trueD)).z < (rp - float3(xy, trueD)).z) {minD = rp;}
-    		float3 compVec0 = normalize(0.00001 + rp - float3(xy, trueD));
-    		float3 compVec1 = normalize(0.00001 + minD - float3(xy, trueD));
+    		float3 compVec0 = normalize(0.000000001 + rp - float3(xy, trueD));
+    		float3 compVec1 = normalize(0.000000001 + minD - float3(xy, trueD));
     		//if(abs(compVec0.x) < abs(compVec1.x)) {minD = rp;}
     		//if(abs(compVec0.y) < abs(compVec1.y)) {minD = rp;}
-    		if(d <= trueD && compVec0.z < compVec1.z) {minD = rp;}
+    		if(compVec0.z <= compVec1.z) {minD = rp;}//d <= trueD && 
     		
     		compVec0 = rp - float3(xy, trueD);
     		compVec1 = minD - float3(xy, trueD);
-    		if(d > trueD && compVec0.z < compVec1.z) {minD = rp;} 
+    		//if(d > trueD && compVec0.z < compVec1.z) {minD = rp;} //d > trueD && 
+    		//id(d < trueD &&
 			//compVec0 = 0.0001 + float3(xy, trueD) - rp;
     		//compVec1 = 0.0001 + float3(xy, trueD) - maxD;
     		//if(d <= trueD && normalize(compVec0).z > normalize(compVec1).z) {maxD = rp;}
@@ -357,7 +358,7 @@ float3 DAMPGI(float2 xy, float2 offset)
     		//Occlusion calculations
    		 int sh;
    		 int sh2;
-   		 if(SHADOW == 0) {sh = 1;}
+   		 if(SHADOW == 0) {sh = 1; sh2 = 1;}
    		 float3 eyeXY = eyePos(rp.xy, rp.z, PW);
 			float3 texXY = eyePos(xy, trueD, PW);
    		 float3 shvMin = normalize(minD - float3(xy, trueD));
@@ -366,7 +367,7 @@ float3 DAMPGI(float2 xy, float2 offset)
    		 
    		 //if(rp.z < trueD && d < (trueD + shd * shvMin.z) + SHADOW_BIAS) {sh = 1;}
    		 if(d < (trueD + shd * shvMin.z) + SHADOW_BIAS) {sh = 1;}
-			if(trueD < (d - shd * shvMax.z) + SHADOW_BIAS) {sh2 = 1;}
+			if(trueD < (d + shd * shvMax.z) + SHADOW_BIAS) {sh2 = 1;}
 			//if(d > trueD) {sh2 = 1;}
 			if(sh == 1)
 			{
@@ -376,7 +377,7 @@ float3 DAMPGI(float2 xy, float2 offset)
 				{
 					float3 nor = 2.0 * tex2Dlod(NorDivSam, float4(rp.xy, 0, iLOD)).rgb - 1.0;
 					smb = 0.5 + 0.5 * dot(-surfN, nor);
-					smb *= 4.0;
+					smb *= 8.0;
 				}
 				
 				float ed = 1.0 + pow(DISTANCE_SCALE * distance(texXY, 0.0), 2.0) / f;
@@ -414,7 +415,7 @@ float3 tonemap(float3 input)
 float3 BlendGI(float3 input, float3 GI, float depth)
 {
 	GI *= 1.0 - pow(depth, 1.0 - DEPTH_MASK * 0.5) * DEPTH_MASK;
-	float3 ICol = lerp(normalize(input) / 0.577, input, 0.5);
+	float3 ICol = lerp(normalize(input) / 0.577, input, 1.0);
 	float ILum = (input.r + input.g + input.b) / 3.0;
 	float GILum = (GI.r + GI.g + GI.b) / 3.0;
 	
@@ -445,7 +446,7 @@ float4 LightMap(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_Targ
 	float3 te = tex2D(ReShade::BackBuffer, texcoord).rgb;
 	te = pow(te, p);
 	te = -te / (te - 1.1);
-	return saturate(float4(te, 1.0));
+	return saturate(float4(normalize(te), 1.0) / 0.577);
 }
 
 //Saves DepthBuffer and LODS
