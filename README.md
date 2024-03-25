@@ -5,13 +5,12 @@ An ever growing list of beautiful lightweight effects to enhance your gaming exp
 
 **Current Effects list:**
     
-    Zentient SDIL (ZN_GI.fx)
-![SkyrimSE 2024-03-15 17-17-24](https://github.com/Zenteon/ZN_FX/assets/162768653/6fb2f722-9899-43a5-b310-3afe29b6c0ce)
-![SkyrimSE 2024-03-15 17-21-35](https://github.com/Zenteon/ZN_FX/assets/162768653/c3c625b2-e75a-4c88-b578-4df79ebcca41)
+    DAMP RT (ZN_DAMP_RT.fx)
+The sucessor to SDIL, DAMP RT (Depth-Aware Mipmapped Ray Tracing) is significantly higher quality, better optimized, and more polished overall.
+If you do wish to download SDIL, it can still be found in the "Shaders" folder, but it's recommended to use DAMP RT instead.
+![UnityEmpty3d 2024-03-24 21-22-50](https://github.com/Zenteon/ZN_FX/assets/162768653/da3d707a-d410-4961-9b08-ca442f5c069b)
+![SkyrimSE 2024-03-22 19-52-09](https://github.com/Zenteon/ZN_FX/assets/162768653/f0ae01e3-8828-4ee3-b79b-581422e5c3c3)
 
-
-SDIL is a lightweight Screen Space Global Illumination shader meant to enhance realism in games with indirect lighting.
-It comes packed with a variety of settings to either significantly boost quality or performance, while providing satisfying results regardless.
 
     Zentient Stylize (ZN_Stylize.fx)
 ![Starfield 2024-03-10 21-15-39](https://github.com/Zenteon/ZN_FX/assets/162768653/89283d29-43ee-40ca-b8e8-cde51da4b6ba)
