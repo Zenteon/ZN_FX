@@ -104,7 +104,7 @@ uniform float AMBIENT_NEG <
 	ui_label = "Ambient Reduction";
 	ui_tooltip = "Removes ambient light before adding GI to the image";
 	ui_category = "Display";
-> = 0.035;
+> = 0.05;
 
 uniform float DEPTH_MASK <
 	ui_type = "slider";
@@ -138,6 +138,15 @@ uniform float SHADOW_BIAS <
 	ui_min = -0.01;
 	ui_max = 0.01;
 > = 0.001;
+
+uniform float DIRECT_BIAS <
+	ui_type = "slider";
+	ui_label = "Direct Bias";
+	ui_tooltip = "Modifies light levels for sampling. 0.0 is more realistic, in most cases 1.0 looks better and is more stable.";
+	ui_category = "Sampling";
+	ui_min = 0.0;
+	ui_max = 1.0;
+> = 0.95;
 
 uniform bool REMOVE_DIRECTL <
 	ui_label = "Brightness Mask";
@@ -334,14 +343,7 @@ float3 DAMPGI(float2 xy, float2 offset)
     		
     		compVec0 = rp - float3(xy, trueD);
     		compVec1 = minD - float3(xy, trueD);
-    		//if(d > trueD && compVec0.z < compVec1.z) {minD = rp;} //d > trueD && 
-    		//id(d < trueD &&
-			//compVec0 = 0.0001 + float3(xy, trueD) - rp;
-    		//compVec1 = 0.0001 + float3(xy, trueD) - maxD;
-    		//if(d <= trueD && normalize(compVec0).z > normalize(compVec1).z) {maxD = rp;}
-    		//else if(d > trueD && compVec0.z > compVec1.z) {max
-    		//if(compVec0.y > compVec1.y) {maxD = rp;}
-    		//if(normalize(rp - float3(xy, trueD)).y <= normalize(minD - float3(xy, trueD)).y) {minD = rp;}
+    		
 			//Ray vector and depth calculations
 			float2 rd = offset.xy * abs(SHOW_MIPS - 1.0);   
     		rp.xy += (RAY_LENGTH * (dir[i] + rd) * pow(2, ii)) / res;
@@ -377,7 +379,7 @@ float3 DAMPGI(float2 xy, float2 offset)
 				{
 					float3 nor = 2.0 * tex2Dlod(NorDivSam, float4(rp.xy, 0, iLOD)).rgb - 1.0;
 					smb = 0.5 + 0.5 * dot(-surfN, nor);
-					smb *= 8.0;
+					smb *= 4.0;
 				}
 				
 				float ed = 1.0 + pow(DISTANCE_SCALE * distance(texXY, 0.0), 2.0) / f;
@@ -415,16 +417,16 @@ float3 tonemap(float3 input)
 float3 BlendGI(float3 input, float3 GI, float depth)
 {
 	GI *= 1.0 - pow(depth, 1.0 - DEPTH_MASK * 0.5) * DEPTH_MASK;
-	float3 ICol = lerp(normalize(input) / 0.577, input, 1.0);
+	float3 ICol = lerp(normalize(input) / 0.577, input, 0.5 + 0.5 * DIRECT_BIAS);
 	float ILum = (input.r + input.g + input.b) / 3.0;
 	float GILum = (GI.r + GI.g + GI.b) / 3.0;
 	
 	if(REMOVE_DIRECTL == 0) {ILum = 0.0;}
 	
-	if(DEBUG == 1) {input = (GI- ILum) * ICol - AMBIENT_NEG;}
+	if(DEBUG == 1) {input = (GI- ILum) * ICol - (INTENSITY * AMBIENT_NEG);}
 	else if(DEBUG == 2) {input = GI;}
 	else if(DEBUG == 3) {input = pow(lerp(1.0, GI, GILum), 3.0);}
-	else{input += (INTENSITY * (GI - ILum) * ICol) - AMBIENT_NEG;}
+	else{input += (INTENSITY * (GI - ILum) * ICol) - (INTENSITY * AMBIENT_NEG);}
 	
 	return input;
 }
@@ -446,7 +448,8 @@ float4 LightMap(float4 vpos : SV_Position, float2 texcoord : TexCoord) : SV_Targ
 	float3 te = tex2D(ReShade::BackBuffer, texcoord).rgb;
 	te = pow(te, p);
 	te = -te / (te - 1.1);
-	return saturate(float4(normalize(te), 1.0) / 0.577);
+	te = lerp(te, normalize(te) / 0.577, DIRECT_BIAS);
+	return saturate(float4(te, 1.0));
 }
 
 //Saves DepthBuffer and LODS
