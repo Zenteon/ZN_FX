@@ -118,7 +118,7 @@ float WireFrame(float2 xy)
 			for(int ii = 0; ii < 2; ii++)
 			{
 				//float g = gaussianK[ii + (i * 3)] / 1;
-				float2 p = 0.5 * float2(i - 0.5, ii - 0.5) / res;
+				float2 p = 0.66667 * float2(i - 0.5, ii - 0.5) / res;
 				norB += tex2D(NormalSam, xy + p).xyz;
 				
 			}}
