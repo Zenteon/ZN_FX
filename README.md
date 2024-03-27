@@ -17,3 +17,7 @@ Note: DAMP RT is still a work in progress, and subject to change.
 ![Starfield 2024-03-10 21-15-39](https://github.com/Zenteon/ZN_FX/assets/162768653/89283d29-43ee-40ca-b8e8-cde51da4b6ba)
 A tasteful pixel art and color curve shader for those tired of realism in games.
 Many configurable options for those who might not want everything it has to offer.
+
+    Zentient Wireframe (ZN_WF.fx)
+A simple and relatively lightweight shader to display front facing meshes for that "2000's hacker vibe."
+![SkyrimSE 2024-03-25 11-31-37](https://github.com/Zenteon/ZN_FX/assets/162768653/09ad805e-3b31-4023-8ff7-a3c07b14a914)
