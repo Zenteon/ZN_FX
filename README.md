@@ -10,7 +10,8 @@ The sucessor to SDIL, DAMP RT (Depth-Aware Mipmapped Ray Tracing) is significant
 If you do wish to download SDIL, it can still be found in the "Shaders" folder, but it's recommended to use DAMP RT instead.
 Note: DAMP RT is still a work in progress, and subject to change.
 ![UnityEmpty3d 2024-03-24 21-22-50](https://github.com/Zenteon/ZN_FX/assets/162768653/da3d707a-d410-4961-9b08-ca442f5c069b)
-![SkyrimSE 2024-03-22 19-52-09](https://github.com/Zenteon/ZN_FX/assets/162768653/f0ae01e3-8828-4ee3-b79b-581422e5c3c3)
+![SkyrimSE 2024-03-27 21-59-50](https://github.com/Zenteon/ZN_FX/assets/162768653/7f417d10-c3a7-4e8e-b24e-d8e6c2ad5c7a)
+
 
 
     Zentient Stylize (ZN_Stylize.fx)
