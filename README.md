@@ -6,11 +6,11 @@ An ever growing list of beautiful lightweight effects to enhance your gaming exp
 **Current Effects list:**
     
     DAMP RT (ZN_DAMP_RT.fx)
-The sucessor to SDIL, DAMP RT (Depth-Aware Mipmapped Ray Tracing) is significantly higher quality, better optimized, and more polished overall.
-If you do wish to download SDIL, it can still be found in the "Shaders" folder, but it's recommended to use DAMP RT instead.
-Note: DAMP RT is still a work in progress, and subject to change.
-![UnityEmpty3d 2024-03-24 21-22-50](https://github.com/Zenteon/ZN_FX/assets/162768653/da3d707a-d410-4961-9b08-ca442f5c069b)
-![SkyrimSE 2024-03-27 21-59-50](https://github.com/Zenteon/ZN_FX/assets/162768653/7f417d10-c3a7-4e8e-b24e-d8e6c2ad5c7a)
+The sucessor to SDIL, DAMP RT (Depth-Aware Mipmapped Ray Tracing) is an extremely efficient Ray Tracing shader with great performance and compettitive quality to other comparable shaders.
+It uses a lightweight temporal denoising with no dependencies other than the base ReShade. Version A21 currently pending release.
+![UnityEmpty3d 2024-03-31 08-17-48](https://github.com/Zenteon/ZN_FX/assets/162768653/4beb46b7-4d33-479f-bf01-a99ca7a389c7)
+![SkyrimSE 2024-03-31 00-38-37](https://github.com/Zenteon/ZN_FX/assets/162768653/30feb80c-edf3-4999-be28-52ec7019a4ae)
+
 
 
 
