@@ -85,6 +85,14 @@ Sponza Test: //https://mega.nz/#!qVwGhYwT!rEwOWergoVOCAoCP3jbKKiuWlRLuHo9bf1mInc
 //============================================================================================
 #endif
 
+
+#ifndef USE_LAUNCHPAD
+//============================================================================================
+	#define USE_LAUNCHPAD 0 //0 = OFF, 1 = Normals, 2 = Motion Vectors, 3 = Both
+//============================================================================================
+#endif
+
+
 uniform int FRAME_COUNT <
 	source = "framecount";>;
 
@@ -469,11 +477,6 @@ uniform int SHADER_VERSION <
 	ui_text = "\n" "Shader Version - A25 (v0.2.5)";
 	ui_label = " ";
 > = 0;
-
-#ifndef USE_LAUNCHPAD
-	#define USE_LAUNCHPAD 3 // 0 = OFF, 1 = Normals, 2 = Motion Vectors, 3 = Both
-#endif
-
 
 //============================================================================================
 //Textures/Samplers
