@@ -21,7 +21,9 @@ Simple Hash:
 Sponza Test: //https://mega.nz/#!qVwGhYwT!rEwOWergoVOCAoCP3jbKKiuWlRLuHo9bf1mInc9dDGE
 */
 
+#include "..\\iMMERSE\\MartysMods\\mmx_deferred.fxh"
 #include "ReShade.fxh"
+
 
 #ifndef DO_REFLECT
 //============================================================================================
@@ -346,6 +348,12 @@ ui_type = "slider";
 	hidden = HIDE_INTERMEDIATE;
 > = 2.5;
 
+/*uniform float USE_LAUNCHPAD <
+	ui_label = "Use Normals and/or Motion Vectors from iMMERSE Launchpad";
+	ui_category = "Sampling";
+	ui_items = "No\0Normals\0Motion Vectors\0Normals + Motion Vectors\0";
+> = 0;*/
+
 uniform float DISTANCE_SCALE <
 ui_type = "slider";
 	ui_min = 0.01;
@@ -438,7 +446,10 @@ uniform int PREPRO_SETTINGS <
 			"ZNRY_RENDER_SCL - The resolution scale for GI, default is automatically selected based on resolution, changes may require reloading ReShade.\n"
 			"\n"
 			"ZNRY_SAMPLE_DIV - The miplevel of sampled textures (ex, 4 is 1/4 resolution, 2 is half resolution, 1 is full resolution)\n"
-			"This has a moderate performance impact, with minimal quality improvements and negative effects on range, not recommended to set below 2";
+			"This has a moderate performance impact, with minimal quality improvements and negative effects on range, not recommended to set below 2\n"
+			"\n"
+			"USE_LAUNCHPAD - Use values provided by iMMERSE's Launchpad.\n"
+			"0 = OFF, 1 = Normals, 2 = Motion Vectors, 3 = Both.\n";
 > = 1;
 
 uniform int CREDITS <
@@ -459,6 +470,9 @@ uniform int SHADER_VERSION <
 	ui_label = " ";
 > = 0;
 
+#ifndef USE_LAUNCHPAD
+	#define USE_LAUNCHPAD 3 // 0 = OFF, 1 = Normals, 2 = Motion Vectors, 3 = Both
+#endif
 
 
 //============================================================================================
@@ -474,7 +488,11 @@ texture RYBlueNoiseTex < source = "ZNbluenoise512.png"; >
 sampler NoiseSam{Texture = RYBlueNoiseTex; MipFilter = Point;};
 
 texture A246RYNorTex{Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA8; MipLevels = 3;};
-sampler NorSam{Texture = A246RYNorTex;};
+#if USE_LAUNCHPAD == 1 || USE_LAUNCHPAD == 3
+	#define NorSam Deferred::sNormalsTex
+#else
+	sampler NorSam{Texture = A246RYNorTex;};
+#endif
 
 texture A25RYNorDivTex{
 	Width = BUFFER_WIDTH / ZNRY_SAMPLE_DIV;
@@ -549,11 +567,15 @@ texture A25RY_DualFrm {
 };
 sampler DualFrm {Texture = A25RY_DualFrm;};
 
-texture texMotionVectors;	
-sampler motionSam {Texture = texMotionVectors;};
+texture texMotionVectors;
+#if USE_LAUNCHPAD > 1
+	#define motionSam Deferred::sMotionVectorsTex
+#else
+	sampler motionSam {Texture = texMotionVectors;};
+#endif
 
-texture MotVectTexVort;	
-sampler motionSam1 {Texture = MotVectTexVort;};
+texture MotVectTexVort;
+sampler motionSam1 {Texture = MotVectTexVort; };
 
 
 //============================================================================================
