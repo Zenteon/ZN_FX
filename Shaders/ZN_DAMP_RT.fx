@@ -570,7 +570,7 @@ namespace A26{
 	texture BufTex{
 		Width = int(BUFFER_WIDTH * ZNRY_RENDER_SCL / ZNRY_SAMPLE_DIV);
 		Height = int(BUFFER_HEIGHT * ZNRY_RENDER_SCL / ZNRY_SAMPLE_DIV);
-		Format = R32F;
+		Format = R16;
 		MipLevels = ZNRY_MAX_LODS;
 	};
 	sampler DepSam{
@@ -622,7 +622,7 @@ namespace A26{
 	texture PreLuminTex {
 		Width = int(BUFFER_WIDTH * ZNRY_RENDER_SCL);
 		Height = int(BUFFER_HEIGHT * ZNRY_RENDER_SCL);
-		Format = R32F;
+		Format = R16;
 		MipLevels = 2;
 	};
 	sampler PreLumin {Texture = PreLuminTex;};
